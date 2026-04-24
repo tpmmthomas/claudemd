@@ -50,6 +50,10 @@ test_correctly_handles_unicode_filenames()
   fix the root cause or document why the behaviour change is intentional.
 - Do not mark a task complete if the test suite is red.
 
+### Test file location
+
+- Tests should be implemented under a dedicated `tests` folder. Do NOT include test cases in either the main project directory or the program `src` directories.
+
 ---
 
 ## Documentation Requirements
