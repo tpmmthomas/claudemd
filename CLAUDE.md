@@ -1,183 +1,136 @@
-# Claude Coding Agent Instructions
+# CLAUDE.md
 
-## Core Philosophy
+Coding-agent instructions for this repository. Optimize for small, correct, verified changes. Avoid over-engineering, silent assumptions, unrelated refactors, and unverified claims.
 
-You are a disciplined, thorough coding agent. Your goal is not just to make code
-work, but to make it correct, maintainable, and well-understood. Never report a
-task as done until you have verified it end-to-end.
+## Core Rules
 
----
+1. **Understand before editing**
+   - Read the relevant source, tests, docs, configs, types, schemas, and nearby examples before changing code.
+   - Search for existing patterns and follow them instead of inventing new ones.
+   - Do not assume silently. State important assumptions when they affect the solution.
+   - If ambiguity affects correctness, ask before implementing.
+   - Push back on requests that would add unsafe behavior, fragile design, or unnecessary complexity.
 
-## Workflow: Every Task
+2. **Make the smallest correct change**
+   - Implement only what was requested.
+   - Do not add speculative features, abstractions, configurability, or error handling for impossible cases.
+   - Do not refactor, rename, reformat, or “improve” unrelated code.
+   - Match the existing project style, even if you would normally write it differently.
+   - Every changed line should trace directly to the task.
+   - Clean up only unused imports, variables, functions, files, or comments introduced by your own change.
 
-Follow this sequence for every non-trivial change:
+3. **Plan non-trivial work**
+   - For multi-step changes, write a short plan before implementation:
 
-1. **Understand** — Read existing code, tests, and docs before writing anything.
-2. **Plan** — Think through edge cases and failure modes before implementing.
-3. **Implement** — Write clean, focused code. One concern per function/module.
-4. **Test** — Write tests, run them, fix failures. Do not skip this step.
-5. **Document** — Leave the code better documented than you found it.
-6. **Verify** — Do a final check before reporting done (see checklist below).
+     ```markdown
+     Plan:
+     1. [Step] -> verify: [specific check]
+     2. [Step] -> verify: [specific check]
+     3. [Step] -> verify: [specific check]
+     ```
 
----
+   - Convert vague goals into verifiable ones:
+     - Bug fix -> reproduce with a failing regression test, fix it, rerun tests.
+     - Validation -> test valid input, invalid input, edge cases, and expected errors.
+     - Refactor -> confirm behavior before and after with tests.
 
-## Testing Requirements
+4. **Keep code boring and maintainable**
+   - Prefer explicit, readable code over clever tricks.
+   - Keep functions focused on one responsibility.
+   - Avoid hidden side effects and unnecessary global mutable state.
+   - Use clear names that describe intent.
+   - Do not leave commented-out code, debug prints, temporary logs, scratch files, or dead code created by your change.
 
-### Always write tests
+5. **Handle errors deliberately**
+   - Validate external input at system boundaries.
+   - Fail fast on invalid input.
+   - Never silently swallow exceptions.
+   - Re-raise or log errors with useful context.
+   - Prefer project-specific error types when the codebase already uses them.
+   - Do not add broad catch-all handlers unless there is a clear recovery strategy.
 
-- Every new function, class, or module must have corresponding test cases.
-- Every bug fix must include a regression test that would have caught the bug.
-- Tests must cover: happy path, edge cases, and expected failure/error cases.
+6. **Protect security**
+   - Never hard-code credentials, tokens, API keys, private keys, passwords, or secrets.
+   - Use the project’s existing secret-management approach.
+   - Sanitize and validate external input before using it in queries, shell commands, file paths, templates, HTML, or dynamic evaluation.
+   - Do not weaken authentication, authorization, cryptographic parameters, validation logic, or permission checks unless explicitly requested.
+   - Add a `# SECURITY:` comment for non-obvious security-sensitive checks and mention security implications in the final response.
 
-### Test naming
+7. **Be conservative with dependencies**
+   - Do not add a dependency for something easily handled by the standard library or existing dependencies.
+   - Before adding one, check whether the project already has a suitable package.
+   - If adding a dependency is justified, update the correct manifest/lockfile and mention it in the final response.
 
-Name tests so they read as specifications:
-```
-test_returns_empty_list_when_input_is_none()
-test_raises_value_error_on_negative_index()
-test_correctly_handles_unicode_filenames()
-```
+## Testing
 
-### Run tests before reporting done
+Tests are part of the implementation.
 
-```bash
-# Always run the full test suite after your changes
-# Report the number of tests passed/failed in your response
-```
+- Add or update tests whenever behavior changes.
+- Every bug fix must include a regression test that would have caught it.
+- New public functions, classes, modules, endpoints, or commands need corresponding tests unless the repository has no test framework; if so, explain this.
+- Cover happy paths, edge cases, expected failures, and relevant integration behavior.
+- Put tests in the repository’s existing test location. If no convention exists, use a dedicated `tests/` directory.
+- Name tests like specifications, for example `test_raises_value_error_on_negative_index()`.
+- Run targeted tests first, then the full test suite when feasible.
+- Run linters, formatters, and type checks when the project uses them.
+- Do not delete, weaken, or skip tests just to make the suite pass.
+- Do not report completion while tests are failing because of your change.
+- If a failure is pre-existing or unrelated, report it with evidence.
 
-- If any test fails: fix the issue, do not paper over it.
-- If a pre-existing test fails due to your change: flag it explicitly and either
-  fix the root cause or document why the behaviour change is intentional.
-- Do not mark a task complete if the test suite is red.
+## Documentation
 
-### Test file location
+Document only what helps future maintainers.
 
-- Tests should be implemented under a dedicated `tests` folder. Do NOT include test cases in either the main project directory or the program `src` directories.
-
----
-
-## Documentation Requirements
-
-### Inline comments (default)
-
-Use comments for the vast majority of documentation. Follow these rules:
-
-- **Why, not what** — Explain intent and reasoning, not what the code literally does.
-- **Complex logic** — Any non-obvious algorithm, regex, or bit manipulation needs a comment.
-- **Workarounds** — Always explain hacks, TODOs, and temporary fixes with context.
-- **Public API** — Every public function/class/method must have a docstring
-  (or JSDoc / equivalent for the language).
-
-```python
-# Good: explains WHY
-# We skip the first byte because the vendor prefixes all payloads with 0xFF
-data = raw[1:]
-
-# Bad: states the obvious
-# Skip index 0
-data = raw[1:]
-```
-
-### Markdown changelog (for large changes)
-
-When a change is large — new feature, significant refactor, breaking change, or
-touches more than ~5 files — create or update a `.md` file alongside your work:
-
-| Situation | File to create/update |
-|---|---|
-| New feature | `docs/features/<feature-name>.md` |
-| Significant refactor | `docs/changes/<YYYY-MM-DD>-<short-slug>.md` |
-| Breaking API change | `BREAKING_CHANGES.md` (append) |
-| Architecture decision | `docs/adr/<NNN>-<short-slug>.md` |
-
-Minimum contents of a change doc:
-```markdown
-## What changed
-A concise description of what was added, removed, or modified.
-
-## Why
-The motivation, linked issue, or business requirement.
-
-## How it works
-A brief technical explanation — especially useful for future maintainers.
-
-## Migration / impact
-Any steps required for callers, dependents, or deployment.
-```
-
----
-
-## Code Quality Standards
-
-### General
-
-- Follow the existing style and conventions of the codebase. Consistency beats
-  personal preference.
-- Functions should do one thing. If you need "and" to describe it, split it.
-- Prefer explicit over implicit. Avoid clever tricks that obscure intent.
-- Delete dead code — don't comment it out and leave it.
-- Keep functions short. If a function exceeds ~40 lines, consider refactoring.
-
-### Error handling
-
-- Never silently swallow exceptions. Log or re-raise with context.
-- Validate inputs early. Fail fast at the boundary, not deep in the call stack.
-- Use domain-specific error types rather than bare `Exception` / `Error`.
-
-### Dependencies
-
-- Do not add a new dependency for something trivially implementable in stdlib.
-- When adding a dependency, note it explicitly in your response.
-- Pin versions when adding to a lockfile.
-
-### Security
-
-- Never hard-code credentials, tokens, or secrets. Use environment variables.
-- Sanitize all external input before use in queries, commands, or templates.
-- Flag any change that has security implications with a `# SECURITY:` comment.
-
----
+- New public APIs need a docstring, JSDoc, or language-appropriate equivalent.
+- Comments should explain **why**, not obvious **what**.
+- Add comments for non-obvious algorithms, complex regexes, workarounds, temporary fixes, security-sensitive checks, and performance tradeoffs.
+- For large changes, update or create markdown docs:
+  - New feature: `docs/features/<feature-name>.md`
+  - Significant refactor: `docs/changes/<YYYY-MM-DD>-<short-slug>.md`
+  - Breaking API change: append to `BREAKING_CHANGES.md`
+  - Architecture decision: `docs/adr/<NNN>-<short-slug>.md`
+- Do not create extra docs for tiny changes.
 
 ## Git Hygiene
 
-- Keep commits atomic — one logical change per commit.
-- Write commit messages in the imperative mood:
-  `Add retry logic to HTTP client` not `Added retry logic`.
-- Reference the relevant issue/ticket number if applicable.
-- Do not commit commented-out code, debug print statements, or `.DS_Store` files.
+- Do not commit unless explicitly asked.
+- When committing is requested, keep commits atomic and use imperative messages, e.g. `Add retry logic to HTTP client`.
+- Do not commit generated files unless expected by the project.
+- Do not commit `.DS_Store`, editor files, local environment files, logs, scratch files, or secrets.
+- Do not rewrite git history unless explicitly asked.
 
----
+## Before Reporting Done
 
-## Pre-Completion Checklist
+Verify every applicable item:
 
-Before saying "done", verify every item below:
+- Original request fully addressed.
+- Diff is small, focused, and follows existing style.
+- No unrelated refactors, renames, or formatting changes.
+- Relevant tests added or updated.
+- Targeted tests pass.
+- Full test suite, lint, formatting, and type checks pass where feasible.
+- New public APIs have docs.
+- Complex or security-sensitive logic has comments.
+- Large changes include appropriate markdown docs.
+- No hard-coded secrets, debug statements, scratch files, or commented-out dead code.
+- Dependency changes are justified and reflected in the right files.
 
-- [ ] All new and existing tests pass.
-- [ ] New tests cover edge cases and failure modes.
-- [ ] Every new public symbol has a docstring / JSDoc.
-- [ ] Complex logic has explanatory comments.
-- [ ] A `.md` change doc was created if the change was large (>5 files or new feature).
-- [ ] No hard-coded secrets or credentials.
-- [ ] No dead code or debug statements left behind.
-- [ ] Linter / formatter passes (e.g. `ruff`, `eslint`, `gofmt`).
-- [ ] The task as originally described is fully addressed.
+If something could not be verified, say exactly what was and was not checked. Never claim tests passed unless they were actually run and passed.
 
-If any item is unchecked, address it before reporting completion.
+## Completion Response Format
 
----
-
-## Response Format
-
-When reporting completion, always include a brief summary in this structure:
-
-```
+```markdown
 ### Done
 
-**What I did:** ...
+**What I did:**
+Brief summary of the change.
 
-**Tests:** X passed, 0 failed  (or: "added N new tests covering ...")
+**Tests:**
+Exact commands run and results, or why tests were not run.
 
-**Docs:** inline comments / <path-to-change-doc>.md
+**Docs:**
+Docstrings, comments, or markdown docs added/updated.
 
-**Notes:** any caveats, follow-ups, or flagged issues
+**Notes:**
+Caveats, pre-existing failures, security implications, dependency changes, or suggested follow-ups.
 ```
